@@ -18,7 +18,7 @@
 <header>
     <div class="container flex-sp-bet">
         <a href="{% url 'dashboard' %}">
-            <h2 class="logo">Dashboard</h2>
+            <h2 class="logo"> Real-Time Twitter Sentiment Analysis</h2>
         </a>
         <nav class="nav">
             <ul>
@@ -29,112 +29,150 @@
     </div>
 </header>
 
-<main class="flex-ctr-clm">
-    <div class="flex-ctr-clm">
+<main class="main-section fade-in">
+    {% if len_data != 0 %}
+    <section class="intro">
+        <h1>Sentiment Analysis Overview</h1>
+        <p>Analyze real-time Twitter data and visualize sentiment distribution and word frequencies.</p>
+    </section>
 
-        {% if len_data != 0 %}
+    <section class="data-section">
+        <div class="section-header">
+            <h2 class="section-title">Dataset Preview</h2>
+            <div class="dropdown-wrapper">
+                <label for="recordLimit">Show:</label>
+                <select id="recordLimit">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span>records</span>
+            </div>
+        </div>
 
-        <h2>Data Visualization</h2>
-
-        <div class="table_container flex-ctr-str">
-            <table>
+        <div class="table-wrapper">
+            <table class="styled-table" id="tweetTable">
                 <thead>
                     <tr>
-                        <th>Text</th>
-                        <th>Target</th>
+                        <th>Tweet</th>
+                        <th>Predicted Sentiment</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in data %}
                     <tr>
                         <td>{{ item.tweet }}</td>
-                        <td>{{ item.prediction }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if item.prediction == 'Positive' %}positive
+                                {% elif item.prediction == 'Negative' %}negative
+                                {% else %}neutral{% endif %}">
+                                {{ item.prediction }}
+                            </span>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+    </section>
 
-        <hr width="75%" color="black" />
+    <section class="stats-section">
+        <h2 class="section-title">Data Statistics</h2>
 
-        <h2>Data Statistics</h2>
+        <div class="stats-summary">
+            <p>Total Records: <strong>{{ len_data }}</strong></p>
+        </div>
 
-        <div class="stats_container flex-ctr-clm">
-
-            <p style="font-size: 20px; font-weight: 600;">Total Data : <mark>{{ len_data }} </mark></p>
-
-            <div class="display-two flex-center">
-                <div class="flex-ctr-clm">
-                    <canvas id="myChart1"></canvas>
-                </div>
-                <div class="flex-ctr-clm">
-                    <h2>Sentiment Rates per Class</h2>
-                    <ul>
-                        {% for label, rate in sentiment_rates.items %}
-                        <li style="font-size: 22px; font-weight: 600;"> {{ label }} : {{ rate }} %</li>
-                        {% endfor %}
-                    </ul>
-                </div>
+        <div class="chart-grid small-chart">
+            <div class="chart-card">
+                <canvas id="myChart1" width="220" height="220"></canvas>
             </div>
-            <hr width="75%" color="black" />
-            <div class="display-two flex-center" style="flex-direction: column; height: 650px;">
-                    <h3>Top Word Frequencies for each class</h3>
-                    <img src="{% static 'imgs/Word_Frequencies_for_all_classes.png' %}" alt="Word_Frequencies_for_all_classes">
+            <div class="chart-info">
+                <h3>Sentiment Distribution</h3>
+                <ul class="stats-list">
+                    {% for label, rate in sentiment_rates.items %}
+                    <li><span>{{ label }}</span> <strong>{{ rate }}%</strong></li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
-            
-        {% else %}
+    </section>
 
-        <h1><mark>the DB is Empty!!</mark> </h1>
+    <section class="wordcloud-section">
+        <h2 class="section-title">Top Word Frequencies</h2>
+        <div class="wordcloud-container">
+            <img src="{% static 'imgs/Word_Frequencies_for_all_classes.png' %}" alt="Word Frequencies" class="wordcloud-img small-img">
+        </div>
+    </section>
 
-        {% endif %}
-
+    {% else %}
+    <div class="empty-state">
+        <h2>No data available</h2>
+        <p>Your database is currently empty. Please run the data ingestion pipeline.</p>
     </div>
+    {% endif %}
 </main>
-
 {% endblock content %}
-
 
 {% block scripts %}
 <script src="{% static 'js/script.js' %}"></script>
 
-
 <script>
-    var expenses = {{ sentiment_counts|safe }}
+    // ---- Chart.js (refreshed colors + smaller size) ----
+    const sentimentCounts = {{ sentiment_counts|safe }};
+    const labels = Object.keys(sentimentCounts);
+    const values = Object.values(sentimentCounts);
 
-    console.log("Expenses:", expenses); 
-
-    var labels = Object.keys(expenses);
-    var amounts = Object.values(expenses);
-
-    var data = {
-        labels: labels,
-        datasets: [{
-            data: amounts,
-            backgroundColor: [
-                'rgba(255, 50, 50)',
-                'rgba(50, 200, 50)',
-                'rgba(50, 50, 200)',
-                'rgba(250, 250, 0)',
-            ]
-        }]
-    };
-
-    var options = {
-        plugins: {
-            legend: {
-                position: 'right' // Position legend at the bottom of the chart
-            }
+    const ctx = document.getElementById('myChart1').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: [
+                    '#2563EB', // blue
+                    '#16A34A', // green
+                    '#EAB308', // yellow
+                    '#DC2626'  // red
+                ],
+                borderWidth: 0,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 15,
+                        font: { size: 13, weight: '500' },
+                        color: '#333'
+                    }
+                }
+            },
+            cutout: '65%'
         }
-    };
-    
-    var ctx = document.getElementById('myChart1').getContext('2d');
-    var myPieChart = new Chart(ctx, {
-        type: 'pie',
-        data: data,
-        options: options
     });
 
+    // ---- Dropdown to limit records ----
+    const recordLimitSelect = document.getElementById('recordLimit');
+    const table = document.getElementById('tweetTable');
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
 
+    function updateTable(limit) {
+        rows.forEach((row, index) => {
+            row.style.display = index < limit ? '' : 'none';
+        });
+    }
+
+    updateTable(10); // default to 10
+    recordLimitSelect.addEventListener('change', () => {
+        updateTable(parseInt(recordLimitSelect.value));
+    });
 </script>
 {% endblock scripts %}

@@ -1,0 +1,31 @@
+source venv/bin/activate
+
+docker-compose -f zk-single-kafka-single.yml up -d
+
+sudo systemctl start mongod
+
+mongodb-compass --disable-gpu
+
+cd Kafka-PySpark
+
+docker exec -it kafka1 /bin/bash
+
+kafka-topics --create --topic twitter --bootstrap-server localhost:9092
+kafka-topics --describe --topic twitter --bootstrap-server localhost:9092
+
+
+python producer-validation-tweets.py
+
+python consumer-pyspark.py
+
+cd Django-Dashboard
+
+python manage.py collectstatic
+
+python manage.py runserver 8001
+
+https://github.com/drisskhattabi6/Real-Time-Twitter-Sentiment-Analysis.git
+python manage.py runserver 8001
+
+docker stop $(docker ps -aq)
+docker rm $(docker ps -aq)

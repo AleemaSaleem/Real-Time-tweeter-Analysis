@@ -167,6 +167,8 @@ python manage.py runserver
 **Dashboard Screenshots:**
 
 ![Dashboard](imgs/img2.png)
+![Dashboard](imgs/img2a.png)
+![Dashboard](imgs/img2b.png)
 ![Dashboard Running](imgs/img3.png)
 
 ---

@@ -1,0 +1,197 @@
+<!-- {% load static %}  -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block metadescription %}{% endblock %}">
+    <title>
+        {% block title %}
+        {% endblock title %}
+    </title>
+    {% block links %}
+    {% endblock links %}
+    <!-- this link to request icons from fontawsome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.2/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,600;0,700;0,800;1,500&display=swap');
+    </style>
+</head>
+<body>
+
+    {% block content %}
+    {% endblock content %}
+
+    {% block scripts %}
+    {% endblock scripts %}
+
+<!-- Floating Chat Widget -->
+<div id="chat-icon" onclick="toggleChat()">💬</div>
+
+<div id="chat-box" style="display:none;">
+  <div id="chat-header">
+    <span>AI Assistant</span>
+    <button id="clear-btn" onclick="clearChat()">🗑️</button>
+  </div>
+  <div id="chat-messages"></div>
+  <div id="chat-input-area">
+    <input type="text" id="chat-input" placeholder="Type a message..." disabled>
+    <button id="send-btn" onclick="sendMessage()" disabled>➤</button>
+  </div>
+</div>
+
+<style>
+/* Floating icon */
+#chat-icon {
+  position: fixed; bottom: 20px; right: 20px;
+  background: #007bff; color: white; border-radius: 50%;
+  width: 60px; height: 60px; display:flex; align-items:center; justify-content:center;
+  cursor: pointer; font-size: 28px; z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Chat box */
+#chat-box {
+  position: fixed; bottom: 90px; right: 20px;
+  width: 550px; height: 550px; background: #f9f9f9;
+  border: 1px solid #ccc; border-radius: 10px;
+  display: flex; flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  font-family: Arial, sans-serif;
+  z-index: 1000;
+}
+
+/* Header */
+#chat-header {
+  background: #01070c; color: white;
+  padding: 10px; font-weight: bold;
+  display: flex; justify-content: space-between; align-items: center;
+  border-top-left-radius: 10px; border-top-right-radius: 10px;
+}
+
+/* Messages area */
+#chat-messages {
+  flex: 1; padding: 10px; overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+
+/* Message bubbles */
+.user-msg {
+  align-self: flex-end;
+  background: #01060b; color: white;
+  padding: 8px 12px; border-radius: 15px 15px 0 15px;
+  margin: 5px; max-width: 70%;
+}
+.bot-msg {
+  align-self: flex-start;
+  background: #e5e5ea; color: black;
+  padding: 8px 12px; border-radius: 15px 15px 15px 0;
+  margin: 5px; max-width: 70%;
+}
+
+/* Input area */
+#chat-input-area {
+  display: flex; border-top: 1px solid #ccc;
+}
+#chat-input {
+  flex: 1; border: none; padding: 10px;
+  border-bottom-left-radius: 10px;
+  outline: none;
+}
+#send-btn {
+  background: #04070a; color: white; border: none;
+  padding: 0 20px; cursor: pointer;
+  border-bottom-right-radius: 10px;
+}
+#send-btn:disabled, #chat-input:disabled {
+  background: #ccc; cursor: not-allowed;
+}
+#clear-btn {
+  background: transparent; border: none; color: white;
+  font-size: 16px; cursor: pointer;
+}
+</style>
+
+<script>
+function toggleChat(){
+  const box=document.getElementById('chat-box');
+  const input=document.getElementById('chat-input');
+  const send=document.getElementById('send-btn');
+  if(box.style.display==='none'){
+    box.style.display='flex';
+    input.disabled=false; send.disabled=false;
+  } else {
+    box.style.display='none';
+  }
+}
+
+function sendMessage(){
+  const input=document.getElementById('chat-input');
+  const msg=input.value.trim(); if(!msg) return;
+  input.value='';
+  const messages=document.getElementById('chat-messages');
+  messages.innerHTML += `<div class="user-msg">${msg}</div>`;
+  messages.scrollTop = messages.scrollHeight;
+
+  // Disable input until reply arrives
+  input.disabled=true; document.getElementById('send-btn').disabled=true;
+
+  fetch('/chat/', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body:JSON.stringify({message:msg})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    messages.innerHTML += `<div class="bot-msg">${data.reply}</div>`;
+    messages.scrollTop = messages.scrollHeight;
+    // Re-enable input
+    input.disabled=false; document.getElementById('send-btn').disabled=false;
+    input.focus();
+  })
+  .catch(err=>{
+    messages.innerHTML += `<div class="bot-msg">Error: ${err}</div>`;
+    input.disabled=false; document.getElementById('send-btn').disabled=false;
+  });
+}
+
+function clearChat(){
+  document.getElementById('chat-messages').innerHTML='';
+}
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+document.getElementById('chat-input').addEventListener("keydown", function(e){
+  if(e.key === "Enter"){
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+document.addEventListener("click", function(e){
+  const chatBox = document.getElementById('chat-box');
+  const chatIcon = document.getElementById('chat-icon');
+  if(chatBox.style.display === 'flex' && !chatBox.contains(e.target) && !chatIcon.contains(e.target)){
+    chatBox.style.display = 'none';
+  }
+});
+</script>
+
+
+    
+</body>
+</html>

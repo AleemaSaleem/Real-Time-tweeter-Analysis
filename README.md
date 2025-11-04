@@ -170,6 +170,8 @@ python manage.py runserver
 ![Dashboard](imgs/img2a.png)
 ![Dashboard](imgs/img2b.png)
 ![Dashboard Running](imgs/img3.png)
+![Dashboard Running](imgs/img5.png)
+![Dashboard Running](imgs/img6.png)
 
 ---
 

@@ -13,6 +13,7 @@ The project integrates the following components:
 * **MongoDB**: Stores processed sentiment data for persistence.
 * **Django**: Web framework for building a real-time dashboard to visualize results.
 * **Chart.js & Matplotlib**: Used for plotting statistics and visualizations.
+* **OPENAI agent SDK**: Agentic AI Framework 
 
 Project Flow:
 
@@ -25,6 +26,7 @@ Project Flow:
 * **Sentiment Analysis**: Classifies tweets using NLP techniques into Positive, Negative, or Neutral.
 * **Data Storage**: Saves processed tweets in MongoDB for historical analysis.
 * **Visualization**: Provides a live dashboard built with Django for interactive insights.
+* **AI Assistant**: Bot for conversation related to sentiment and business intelligense.
 
 ## Dataset Description
 
@@ -58,6 +60,7 @@ The project uses the following datasets:
 * Apache Spark (PySpark)
 * MongoDB
 * Django
+* Gemini API key
 
 ### Installation
 
@@ -186,7 +189,7 @@ python manage.py runserver
 
 ## Summary
 
-By following these instructions, you can run a **real-time Twitter sentiment analysis system** locally. The system integrates Kafka, Spark, Django, and MongoDB for **streaming, processing, storage, and visualization**.
+By following these instructions, you can run a **real-time Twitter sentiment analysis system** locally. The system integrates Kafka, Spark, Django, openai agent SDK frameworkand MongoDB for **streaming, processing, storage, and visualization, conversational assistant**.
 
 Feel free to explore, customize, and extend the project. For issues or questions, reach out via the repository.
 

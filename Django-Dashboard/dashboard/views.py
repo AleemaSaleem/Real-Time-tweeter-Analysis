@@ -154,57 +154,121 @@ def classify(request) :
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from asgiref.sync import sync_to_async
 import json, os
-from openai import OpenAI
-from .consumer_user import classify_text   # import your Spark sentiment classifier
 from dotenv import load_dotenv
-import os
+from agents import AsyncOpenAI
+from .consumer_user import classify_text
 
-load_dotenv()  # this loads variables from .env into os.environ
+load_dotenv()
 
 @csrf_exempt
-def chat_api(request):
-    if request.method == "POST":
+async def chat_api(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+
+    try:
         data = json.loads(request.body)
-        user_msg = data.get("message", "")
+        user_msg = data.get("message", "").strip()
+    except json.JSONDecodeError:
+        return JsonResponse({"reply": "Invalid request format."}, status=400)
 
-        if not user_msg.strip():
-            return JsonResponse({"reply": "Please type something."})
+    if not user_msg:
+        return JsonResponse({"reply": "Please type something."})
 
-        # Step 1: classify sentiment
-        sentiment = classify_text(user_msg)
+    # Step 1: run Spark classification in a background thread
+    sentiment = await sync_to_async(classify_text)(user_msg)
 
-        # Step 2: create OpenAI client
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        print("OPENAI_API_KEY:", os.getenv("OPENAI_API_KEY"))
+    # Step 2: Load Gemini key
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    if not GEMINI_API_KEY:
+        return JsonResponse({"reply": "Gemini API key missing in .env file."}, status=500)
 
-        try:
-            # Step 3: call OpenAI with both message + sentiment
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": (
-                        "You are a friendly assistant inside a Django dashboard. "
-                        "Always respond naturally like a human, and acknowledge the user's emotional tone. "
-                        "Only reply and tell the sentiments when the user asks you, otherwise reply normally"
-                        "If sentiment is Negative, be empathetic; if Positive, be cheerful; if Neutral, be clear; "
-                        "if Irrelevant, politely redirect."
-                    )},
-                    {"role": "user", "content": f"User said: '{user_msg}'\nDetected sentiment: {sentiment}"}
-                ]
-            )
-            reply = response.choices[0].message.content
+    BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    client = AsyncOpenAI(api_key=GEMINI_API_KEY, base_url=BASE_URL)
 
-        except Exception as e:
-            # Step 4: fallback if OpenAI fails
-            fallback_map = {
-                "Positive": "Your query is positive",
-                "Negative": "Your Query is negative",
-                "Neutral": "Your query is neutral",
-                "Irrelevant": "Your query is irrelevent"
-            }
-            reply = fallback_map.get(sentiment, "Sorry, I couldn’t respond right now. Please try again later.")
+    try:
+        # Step 3: Await Gemini async call
+        response = await client.chat.completions.create(
+            model="gemini-2.5-flash",
+            messages=[
+                {"role": "system", "content": (
+                    "You are a friendly AI assistant integrated into a Django dashboard. "
+                    "Respond naturally and acknowledge user sentiment only if asked."
+                )},
+                {"role": "user", "content": f"User said: '{user_msg}'. Detected sentiment: {sentiment}"},
+            ],
+        )
 
-        return JsonResponse({"reply": reply})
+        reply = response.choices[0].message.content.strip()
+        print("✅ Gemini Response:", reply)
+
+    except Exception as e:
+        print("❌ Gemini Error:", str(e))
+        fallback_map = {
+            "Positive": "Your query is positive 😊",
+            "Negative": "Your query seems negative 😔",
+            "Neutral": "Your query is neutral 🙂",
+            "Irrelevant": "Your query seems irrelevant 🤔"
+        }
+        reply = fallback_map.get(sentiment, "Sorry, Gemini couldn’t respond right now. Please try again later.")
+
+    return JsonResponse({"reply": reply})
+
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
+# import json, os
+# from openai import OpenAI
+# from .consumer_user import classify_text   # import your Spark sentiment classifier
+# from dotenv import load_dotenv
+# import os
+
+# load_dotenv()  # this loads variables from .env into os.environ
+
+# @csrf_exempt
+# def chat_api(request):
+#     if request.method == "POST":
+#         data = json.loads(request.body)
+#         user_msg = data.get("message", "")
+
+#         if not user_msg.strip():
+#             return JsonResponse({"reply": "Please type something."})
+
+#         # Step 1: classify sentiment
+#         sentiment = classify_text(user_msg)
+
+#         # Step 2: create OpenAI client
+#         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+#         print("OPENAI_API_KEY:", os.getenv("OPENAI_API_KEY"))
+
+#         try:
+#             # Step 3: call OpenAI with both message + sentiment
+#             response = client.chat.completions.create(
+#                 model="gpt-4o-mini",
+#                 messages=[
+#                     {"role": "system", "content": (
+#                         "You are a friendly assistant inside a Django dashboard. "
+#                         "Always respond naturally like a human, and acknowledge the user's emotional tone. "
+#                         "Only reply and tell the sentiments when the user asks you, otherwise reply normally"
+#                         "If sentiment is Negative, be empathetic; if Positive, be cheerful; if Neutral, be clear; "
+#                         "if Irrelevant, politely redirect."
+#                     )},
+#                     {"role": "user", "content": f"User said: '{user_msg}'\nDetected sentiment: {sentiment}"}
+#                 ]
+#             )
+#             reply = response.choices[0].message.content
+
+#         except Exception as e:
+#             # Step 4: fallback if OpenAI fails
+#             fallback_map = {
+#                 "Positive": "Your query is positive",
+#                 "Negative": "Your Query is negative",
+#                 "Neutral": "Your query is neutral",
+#                 "Irrelevant": "Your query is irrelevent"
+#             }
+#             reply = fallback_map.get(sentiment, "Sorry, I couldn’t respond right now. Please try again later.")
+
+#         return JsonResponse({"reply": reply})
+
 
 

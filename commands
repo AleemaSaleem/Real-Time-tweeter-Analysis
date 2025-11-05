@@ -24,8 +24,5 @@ python manage.py collectstatic
 
 python manage.py runserver 8001
 
-https://github.com/drisskhattabi6/Real-Time-Twitter-Sentiment-Analysis.git
-python manage.py runserver 8001
-
 docker stop $(docker ps -aq)
 docker rm $(docker ps -aq)
